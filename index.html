@@ -1,0 +1,308 @@
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Electro-Robot: Diversión con Energía</title>
+    <!-- Script Publicitario Solicitado -->
+    <script src="https://pl29235810.profitablecpmratenetwork.com/34/46/83/344683d6a08dfb0f61731495e8dcb990.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Boogaloo&display=swap');
+
+        body {
+            font-family: 'Boogaloo', cursive;
+            background: #4facfe;
+            background: linear-gradient(180deg, #4facfe 0%, #00f2fe 100%);
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .robot {
+            position: absolute;
+            bottom: 20px;
+            width: 80px;
+            height: 80px;
+            font-size: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease-out;
+            z-index: 50;
+        }
+
+        .item {
+            position: absolute;
+            font-size: 40px;
+            z-index: 40;
+        }
+
+        .energy-bar-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            border: 3px solid white;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        #energy-fill {
+            width: 100%;
+            height: 100%;
+            background: #22c55e;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+
+        .score-board {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        /* Estrellas de fondo animadas */
+        .star {
+            position: absolute;
+            color: white;
+            opacity: 0.3;
+            animation: twinkle 2s infinite alternate;
+        }
+
+        @keyframes twinkle {
+            from { opacity: 0.1; transform: scale(1); }
+            to { opacity: 0.4; transform: scale(1.2); }
+        }
+
+        .floating {
+            animation: float 2s infinite ease-in-out;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Fondo Decorativo -->
+        <div id="stars-container"></div>
+
+        <!-- Interfaz de Usuario -->
+        <div class="energy-bar-container">
+            <div id="energy-fill"></div>
+        </div>
+        <div class="score-board">Puntos: <span id="score">0</span></div>
+
+        <!-- Personaje -->
+        <div id="player" class="robot floating">🤖</div>
+
+        <!-- Pantalla de Inicio / Fin -->
+        <div id="overlay" class="absolute inset-0 bg-black/60 z-[200] flex items-center justify-center p-6 text-center">
+            <div class="bg-white p-8 rounded-3xl shadow-2xl max-w-xs w-full">
+                <div id="overlay-icon" class="text-7xl mb-4">⚡</div>
+                <h2 id="overlay-title" class="text-3xl font-bold text-sky-600 mb-2">¡ELECTRO-ROBOT!</h2>
+                <p id="overlay-text" class="text-slate-600 mb-6 font-sans">¡Ayuda al robot a atrapar baterías para no apagarse!</p>
+                <button id="start-btn" class="w-full bg-yellow-400 hover:bg-yellow-300 text-yellow-900 font-bold py-4 rounded-2xl text-xl shadow-lg transform transition active:scale-95">
+                    ¡JUGAR AHORA!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreEl = document.getElementById('score');
+        const energyFill = document.getElementById('energy-fill');
+        const overlay = document.getElementById('overlay');
+        const startBtn = document.getElementById('start-btn');
+
+        let score = 0;
+        let energy = 100;
+        let gameActive = false;
+        let playerX = 50; // Porcentaje
+        let items = [];
+        let gameLoopId;
+        let spawnRate = 1200; // ms
+        let lastSpawn = 0;
+
+        // Crear estrellas de fondo
+        function createStars() {
+            const starsContainer = document.getElementById('stars-container');
+            for(let i = 0; i < 20; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.textContent = '✦';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 80 + '%';
+                star.style.fontSize = (Math.random() * 10 + 10) + 'px';
+                star.style.animationDelay = Math.random() * 2 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        function startGame() {
+            score = 0;
+            energy = 100;
+            gameActive = true;
+            items.forEach(item => item.el.remove());
+            items = [];
+            scoreEl.textContent = '0';
+            overlay.style.display = 'none';
+            lastSpawn = Date.now();
+            requestAnimationFrame(update);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            cancelAnimationFrame(gameLoopId);
+            document.getElementById('overlay-icon').textContent = '🪫';
+            document.getElementById('overlay-title').textContent = '¡SIN ENERGÍA!';
+            document.getElementById('overlay-text').textContent = `El robot se durmió. Lograste juntar ${score} puntos.`;
+            document.getElementById('start-btn').textContent = 'INTENTAR DE NUEVO';
+            overlay.style.display = 'flex';
+        }
+
+        // Movimiento por Mouse/Touch
+        function handleInput(e) {
+            if (!gameActive) return;
+            const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const rect = container.getBoundingClientRect();
+            let relativeX = ((x - rect.left) / rect.width) * 100;
+            playerX = Math.max(5, Math.min(95, relativeX));
+            player.style.left = `calc(${playerX}% - 40px)`;
+        }
+
+        container.addEventListener('mousemove', handleInput);
+        container.addEventListener('touchmove', handleInput);
+
+        function spawnItem() {
+            const types = [
+                { icon: '🔋', type: 'good', value: 15 },
+                { icon: '⚡', type: 'good', value: 10 },
+                { icon: '💧', type: 'bad', value: -25 },
+                { icon: '🌟', type: 'bonus', value: 50 }
+            ];
+            
+            // Probabilidad: más baterías que lluvia
+            let rand = Math.random();
+            let selected;
+            if (rand < 0.6) selected = types[0]; // Batería
+            else if (rand < 0.8) selected = types[1]; // Rayo
+            else if (rand < 0.95) selected = types[2]; // Agua
+            else selected = types[3]; // Estrella bonus
+
+            const el = document.createElement('div');
+            el.className = 'item';
+            el.textContent = selected.icon;
+            el.style.left = (Math.random() * 80 + 10) + '%';
+            el.style.top = '-50px';
+            container.appendChild(el);
+
+            items.push({
+                el: el,
+                y: -50,
+                type: selected.type,
+                value: selected.value,
+                speed: 3 + (score / 10) // Aumenta dificultad
+            });
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            const now = Date.now();
+            if (now - lastSpawn > Math.max(400, spawnRate - (score * 5))) {
+                spawnItem();
+                lastSpawn = now;
+            }
+
+            // Consumo natural de energía
+            energy -= 0.05;
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                let item = items[i];
+                item.y += item.speed;
+                item.el.style.top = item.y + 'px';
+
+                // Detección de colisión simple
+                const playerRect = player.getBoundingClientRect();
+                const itemRect = item.el.getBoundingClientRect();
+
+                if (
+                    itemRect.top < playerRect.bottom &&
+                    itemRect.bottom > playerRect.top &&
+                    itemRect.left < playerRect.right &&
+                    itemRect.right > playerRect.left
+                ) {
+                    // Colisión!
+                    if (item.type === 'bad') {
+                        energy += item.value;
+                        player.style.filter = 'invert(1) sepia(1) saturate(5) hue-rotate(300deg)';
+                        setTimeout(() => player.style.filter = '', 300);
+                    } else {
+                        energy = Math.min(100, energy + (item.type === 'good' ? 5 : 0));
+                        score += (item.type === 'bonus' ? 50 : 10);
+                        scoreEl.textContent = score;
+                        
+                        // Efecto de brillo
+                        player.style.filter = 'brightness(2)';
+                        setTimeout(() => player.style.filter = '', 200);
+                    }
+                    
+                    item.el.remove();
+                    items.splice(i, 1);
+                    continue;
+                }
+
+                // Salir de pantalla
+                if (item.y > window.innerHeight) {
+                    item.el.remove();
+                    items.splice(i, 1);
+                }
+            }
+
+            // Actualizar barra de energía
+            energyFill.style.width = energy + '%';
+            if (energy > 60) energyFill.style.backgroundColor = '#22c55e';
+            else if (energy > 30) energyFill.style.backgroundColor = '#facc15';
+            else energyFill.style.backgroundColor = '#ef4444';
+
+            if (energy <= 0) {
+                gameOver();
+            } else {
+                gameLoopId = requestAnimationFrame(update);
+            }
+        }
+
+        createStars();
+        startBtn.onclick = startGame;
+
+    </script>
+</body>
+</html>
+
+```
